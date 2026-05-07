@@ -83,3 +83,9 @@ export function updateContact(
 export function deleteContact(id: string): void {
   localStorage.removeItem(key(id));
 }
+
+export function clearAllContacts(): void {
+  for (const k of allContactKeys()) {
+    localStorage.removeItem(k);
+  }
+}

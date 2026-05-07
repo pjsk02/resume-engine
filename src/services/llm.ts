@@ -1,7 +1,11 @@
 async function post(
   body: Record<string, unknown>,
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string;
+  // sessionStorage key (set via ApiKeyGate or SettingsPanel) takes priority over the env var
+  const apiKey =
+    sessionStorage.getItem("re:api-key") ||
+    (import.meta.env.VITE_ANTHROPIC_KEY as string) ||
+    "";
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
