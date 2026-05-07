@@ -8,7 +8,15 @@ export interface Contact {
   email?: string;
   linkedin?: string;
   notes?: string;
-  status: "to-reach" | "reached" | "replied" | "interviewing" | "closed";
+  message?: string;
+  thread?: string[];
+  status:
+    | "to-reach"
+    | "reached"
+    | "replied"
+    | "interviewing"
+    | "closed"
+    | "connection_sent";
   createdAt: string;
   updatedAt: string;
 }
@@ -35,7 +43,9 @@ export function getContacts(): Contact[] {
     .filter(Boolean) as Contact[];
 }
 
-export function saveContact(contact: Omit<Contact, "id" | "createdAt" | "updatedAt">): Contact {
+export function saveContact(
+  contact: Omit<Contact, "id" | "createdAt" | "updatedAt">,
+): Contact {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const full: Contact = { ...contact, id, createdAt: now, updatedAt: now };
@@ -43,11 +53,19 @@ export function saveContact(contact: Omit<Contact, "id" | "createdAt" | "updated
   return full;
 }
 
-export function updateContact(id: string, patch: Partial<Omit<Contact, "id" | "createdAt">>): Contact {
+export function updateContact(
+  id: string,
+  patch: Partial<Omit<Contact, "id" | "createdAt">>,
+): Contact {
   const existing = localStorage.getItem(key(id));
   if (!existing) throw new Error(`Contact ${id} not found`);
   const contact: Contact = JSON.parse(existing);
-  const updated: Contact = { ...contact, ...patch, id, updatedAt: new Date().toISOString() };
+  const updated: Contact = {
+    ...contact,
+    ...patch,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
   localStorage.setItem(key(id), JSON.stringify(updated));
   return updated;
 }
