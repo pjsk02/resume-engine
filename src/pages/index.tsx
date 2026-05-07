@@ -1,5 +1,7 @@
 import { useState } from "react";
 import Background from "../components/Background";
+import Optimizer from "../components/Optimizer";
+import Outreach from "./Outreach";
 
 type Tab = "Optimizer" | "Outreach" | "Tracker";
 
@@ -41,25 +43,19 @@ export default function IndexPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {active === "Optimizer" && (
           <section>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
               Resume Optimizer
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Paste a job description and your resume — get tailored bullet
-              suggestions powered by your skills profile.
-            </p>
+            <Optimizer />
           </section>
         )}
 
         {active === "Outreach" && (
           <section>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
               Outreach
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Generate personalized cold-outreach messages for contacts in your
-              tracker.
-            </p>
+            <Outreach />
           </section>
         )}
 
