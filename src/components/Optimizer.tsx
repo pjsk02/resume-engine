@@ -125,6 +125,10 @@ export default function Optimizer() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // Restore any previously saved custom skills so the override survives a refresh
+    const saved = localStorage.getItem("re:skills-override");
+    if (saved) { setCustomSkills(saved); setIsCustom(true); }
+
     fetch("/skills.json")
       .then((r) => r.json())
       .then((data) => setDefaultSkills(JSON.stringify(data, null, 2)))
@@ -275,6 +279,7 @@ export default function Optimizer() {
               onChange={(e) => {
                 setCustomSkills(e.target.value);
                 setIsCustom(true);
+                localStorage.setItem("re:skills-override", e.target.value);
               }}
               rows={9}
               spellCheck={false}
@@ -282,7 +287,7 @@ export default function Optimizer() {
             />
             {isCustom && (
               <button
-                onClick={() => { setIsCustom(false); setCustomSkills(""); }}
+                onClick={() => { setIsCustom(false); setCustomSkills(""); localStorage.removeItem("re:skills-override"); }}
                 className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2 transition-colors"
               >
                 Reset to default
