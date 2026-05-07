@@ -1,5 +1,12 @@
 const PREFIX = "re:";
 
+export interface ThreadEntry {
+  id: string;
+  message: string;
+  timestamp: string;
+  direction: "sent" | "received";
+}
+
 export interface Contact {
   id: string;
   name: string;
@@ -9,14 +16,17 @@ export interface Contact {
   linkedin?: string;
   notes?: string;
   message?: string;
-  thread?: string[];
+  goal?: string;
+  thread?: ThreadEntry[];
   status:
     | "to-reach"
     | "reached"
     | "replied"
     | "interviewing"
+    | "interview"
     | "closed"
-    | "connection_sent";
+    | "connection_sent"
+    | "referral_requested";
   createdAt: string;
   updatedAt: string;
 }
