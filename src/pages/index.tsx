@@ -2,6 +2,7 @@ import { useState } from "react";
 import Background from "../components/Background";
 import Optimizer from "../components/Optimizer";
 import Outreach from "./Outreach";
+import Tracker from "../components/Tracker";
 
 type Tab = "Optimizer" | "Outreach" | "Tracker";
 
@@ -61,13 +62,10 @@ export default function IndexPage() {
 
         {active === "Tracker" && (
           <section>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
               Contact Tracker
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Keep track of everyone you've reached out to and where things
-              stand.
-            </p>
+            <Tracker />
           </section>
         )}
       </main>
