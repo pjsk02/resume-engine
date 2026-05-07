@@ -1,0 +1,33 @@
+{
+  "preferredVerbs": [
+    "engineered",
+    "architected",
+    "optimized",
+    "delivered",
+    "led",
+    "reduced",
+    "increased",
+    "automated",
+    "designed",
+    "implemented"
+  ],
+  "skillHighlights": [
+    "TypeScript",
+    "React",
+    "Node.js",
+    "Python",
+    "SQL",
+    "REST APIs",
+    "cloud infrastructure",
+    "CI/CD pipelines",
+    "system design",
+    "cross-functional collaboration"
+  ],
+  "tonePreference": "professional yet approachable — confident without being boastful; quantify impact wherever possible",
+  "industryFocus": [
+    "software engineering",
+    "fintech",
+    "developer tooling",
+    "AI/ML platforms"
+  ]
+}
