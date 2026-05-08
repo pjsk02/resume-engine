@@ -165,20 +165,22 @@ export default function Optimizer() {
           `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`,
           systemPrompt || undefined,
         ),
-        // ATS score — independent call, no custom system prompt needed
+
+        // ATS score — short dedicated system prompt, no resume strategy needed
         callLLM(
-          `Score this resume against this JD from 0-100 for ATS compatibility. ` +
-          `Return JSON: {"score": number, "matched": string[], "missing": string[]}\n\n` +
           `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`,
-          undefined,
-          1024,
+          `Score the resume against the JD from 0–100 for ATS compatibility. ` +
+          `Return ONLY valid JSON, no explanation: ` +
+          `{"score": number, "matched": string[], "missing": string[]}`,
+          512,
         ),
-        // Power verbs — independent call
+
+        // Power verbs — JD only, no resume needed
         callLLM(
-          `Extract the 10 most impactful action verbs from this JD. Return a JSON array of strings only.\n\n` +
           `JOB DESCRIPTION:\n${jd}`,
-          undefined,
-          256,
+          `Extract the 10 most impactful action verbs from this JD. ` +
+          `Return ONLY a JSON array of strings, no explanation: ["verb1", "verb2", ...]`,
+          300,
         ),
       ]);
 
