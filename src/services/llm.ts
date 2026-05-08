@@ -1,26 +1,37 @@
-async function post(
-  body: Record<string, unknown>,
-): Promise<string> {
-  // sessionStorage key (set via ApiKeyGate or SettingsPanel) takes priority over the env var
-  const apiKey =
+const MODEL    = "google/gemma-4-31b-it:free";
+const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+
+function getApiKey(): string {
+  return (
     sessionStorage.getItem("re:api-key") ||
-    (import.meta.env.VITE_ANTHROPIC_KEY as string) ||
-    "";
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    (import.meta.env.VITE_OPENROUTER_KEY as string) ||
+    ""
+  );
+}
+
+async function post(
+  messages: Array<{ role: string; content: unknown }>,
+  maxTokens: number,
+): Promise<string> {
+  const apiKey = getApiKey();
+  const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": window.location.origin,
+      "X-Title": "resume-engine",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages }),
   });
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Anthropic API error ${response.status}: ${err}`);
+    throw new Error(`OpenRouter API error ${response.status}: ${err}`);
   }
   const data = await response.json();
-  return (data.content[0] as { type: string; text: string }).text;
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Empty response from model");
+  return content as string;
 }
 
 export async function callLLM(
@@ -28,13 +39,39 @@ export async function callLLM(
   system?: string,
   maxTokens = 4096,
 ): Promise<string> {
-  const body: Record<string, unknown> = {
-    model: "claude-sonnet-4-6",
-    max_tokens: maxTokens,
-    messages: [{ role: "user", content: prompt }],
-  };
-  if (system) body.system = system;
-  return post(body);
+  const messages: Array<{ role: string; content: string }> = [];
+  if (system) messages.push({ role: "system", content: system });
+  messages.push({ role: "user", content: prompt });
+  return post(messages, maxTokens);
+}
+
+// ── PDF text extraction via pdf.js CDN ────────────────────────────────────────
+// Gemma uses the chat API (no native document type), so we extract the PDF
+// text and embed it in the prompt as plain text.
+
+let pdfjsLib: any = null;
+
+async function loadPdfJs() {
+  if (pdfjsLib) return pdfjsLib;
+  // @ts-ignore
+  pdfjsLib = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs");
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+  return pdfjsLib;
+}
+
+async function extractPdfText(base64: string): Promise<string> {
+  const lib = await loadPdfJs();
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const pdf = await lib.getDocument({ data: bytes }).promise;
+
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item: any) => item.str).join(" "));
+  }
+  return pages.join("\n\n").trim();
 }
 
 export async function callLLMWithDocument(
@@ -43,26 +80,10 @@ export async function callLLMWithDocument(
   system?: string,
   maxTokens = 2048,
 ): Promise<string> {
-  const body: Record<string, unknown> = {
-    model: "claude-sonnet-4-6",
-    max_tokens: maxTokens,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: docBase64,
-            },
-          },
-          { type: "text", text: prompt },
-        ],
-      },
-    ],
-  };
-  if (system) body.system = system;
-  return post(body);
+  const docText = await extractPdfText(docBase64);
+  return callLLM(
+    `${prompt}\n\n--- DOCUMENT CONTENT ---\n${docText}`,
+    system,
+    maxTokens,
+  );
 }

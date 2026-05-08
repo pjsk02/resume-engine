@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 const SESSION_KEY = "re:api-key";
 
 function hasKey(): boolean {
-  return !!(import.meta.env.VITE_ANTHROPIC_KEY || sessionStorage.getItem(SESSION_KEY));
+  return !!(import.meta.env.VITE_OPENROUTER_KEY || sessionStorage.getItem(SESSION_KEY));
 }
 
 export default function ApiKeyGate({ children }: { children: ReactNode }) {
@@ -16,25 +16,26 @@ export default function ApiKeyGate({ children }: { children: ReactNode }) {
   const handleSave = () => {
     const key = draft.trim();
     if (!key) { setError("Key cannot be empty."); return; }
-    if (!key.startsWith("sk-ant-")) { setError("Key should start with sk-ant-"); return; }
+    if (!key.startsWith("sk-or-")) { setError("Key should start with sk-or-"); return; }
     sessionStorage.setItem(SESSION_KEY, key);
     setUnlocked(true);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8 space-y-5">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md p-8 space-y-5">
 
         <div className="space-y-1.5">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Anthropic API key required
+          <h2 className="text-xl font-semibold text-white">
+            OpenRouter API key required
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Your key is stored in{" "}
-            <code className="font-mono text-[11px] bg-gray-100 dark:bg-gray-700 px-1 rounded">
+          <p className="text-sm text-white/50">
+            Free key from{" "}
+            <span className="text-white/70">openrouter.ai</span>. Stored in{" "}
+            <code className="font-mono text-[11px] bg-white/10 text-white/60 px-1 rounded">
               sessionStorage
             </code>{" "}
-            only — never persisted to disk or sent anywhere except directly to Anthropic.
+            only — never persisted to disk.
           </p>
         </div>
 
@@ -44,11 +45,11 @@ export default function ApiKeyGate({ children }: { children: ReactNode }) {
             value={draft}
             onChange={(e) => { setDraft(e.target.value); setError(""); }}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
-            placeholder="sk-ant-..."
+            placeholder="sk-or-..."
             autoFocus
-            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-white/10 bg-black/40 text-white placeholder:text-white/30 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
 
         <button
@@ -58,9 +59,9 @@ export default function ApiKeyGate({ children }: { children: ReactNode }) {
           Save and continue
         </button>
 
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+        <p className="text-xs text-white/30 text-center">
           Or set{" "}
-          <code className="font-mono text-[11px]">VITE_ANTHROPIC_KEY</code>{" "}
+          <code className="font-mono text-[11px]">VITE_OPENROUTER_KEY</code>{" "}
           in a <code className="font-mono text-[11px]">.env</code> file to skip this prompt.
         </p>
 
