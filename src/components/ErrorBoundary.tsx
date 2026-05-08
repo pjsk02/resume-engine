@@ -23,19 +23,19 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children;
 
     return (
-      <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 space-y-4">
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 backdrop-blur-sm p-6 space-y-4">
         <div className="flex items-start gap-3">
           <svg
-            className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
+            className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
           <div className="min-w-0">
-            <p className="font-semibold text-red-700 dark:text-red-400">
+            <p className="font-semibold text-red-400">
               {this.props.label ?? "Something went wrong"}
             </p>
-            <p className="text-sm text-red-600 dark:text-red-500 font-mono mt-1 break-all">
+            <p className="text-sm text-red-300/70 font-mono mt-1 break-all">
               {error.message}
             </p>
           </div>

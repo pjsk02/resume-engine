@@ -1,1 +1,91 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  background: #000;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  cursor: crosshair;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Restore normal cursor on interactive elements */
+button, input, textarea, select, a, label, [role="button"] {
+  cursor: auto;
+}
+
+/* ── Keyframes ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes barBounce {
+  0%, 100% { transform: scaleY(1);   opacity: 0.3; }
+  50%       { transform: scaleY(2.5); opacity: 1;   }
+}
+
+@keyframes gradientSlide {
+  from { background-position: 0%   center; }
+  to   { background-position: 200% center; }
+}
+
+@keyframes flashIn {
+  from { opacity: 0; transform: scale(0.8) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* ── Animation utility classes ── */
+.animate-fade-up {
+  animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 1.2s ease both;
+}
+
+.animate-bar-bounce {
+  animation: barBounce 1s ease-in-out infinite;
+}
+
+.animate-gradient-slide {
+  animation: gradientSlide 4s linear infinite;
+}
+
+.animate-flash-in {
+  animation: flashIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ── Glow helpers ── */
+.text-glow {
+  text-shadow: 0 0 20px currentColor, 0 0 60px currentColor, 0 0 100px currentColor;
+}
+
+.text-glow-sm {
+  text-shadow: 0 0 10px currentColor, 0 0 30px currentColor;
+}

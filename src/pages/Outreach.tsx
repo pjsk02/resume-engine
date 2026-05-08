@@ -10,8 +10,8 @@ export default function Outreach() {
 
   return (
     <div className="space-y-6">
-      {/* Sub-tab bar — underline style to distinguish from main pill tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 gap-6">
+      {/* Sub-tab bar */}
+      <div className="flex border-b border-white/10 gap-6">
         {TABS.map((tab) => (
           <button
             key={tab}
@@ -19,8 +19,8 @@ export default function Outreach() {
             className={[
               "pb-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
               active === tab
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200",
+                ? "border-indigo-400 text-indigo-400"
+                : "border-transparent text-white/40 hover:text-white/70",
             ].join(" ")}
           >
             {tab}

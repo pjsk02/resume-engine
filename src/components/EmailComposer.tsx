@@ -10,11 +10,11 @@ const TONES = ["Professional", "Warm", "Concise"] as const;
 type Tone = (typeof TONES)[number];
 
 const fieldCls =
-  "w-full rounded-lg border border-gray-200 dark:border-gray-700 " +
-  "bg-white dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 " +
+  "w-full rounded-lg border border-white/10 " +
+  "bg-black/40 text-white placeholder:text-white/30 " +
   "px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
-const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+const labelCls = "block text-sm font-medium text-white/60 mb-1";
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ function BodySkeleton() {
   return (
     <div className="animate-pulse space-y-2">
       {widths.map((w, i) => (
-        <div key={i} className="h-3 bg-gray-200 dark:bg-gray-700 rounded" style={{ width: w }} />
+        <div key={i} className="h-3 bg-white/10 rounded" style={{ width: w }} />
       ))}
     </div>
   );
@@ -41,7 +41,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handle}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
     >
       {copied ? "✓ Copied" : "Copy"}
     </button>
@@ -91,9 +91,7 @@ export default function EmailComposer() {
         setSubject("");
         setBody(raw.trim());
       } else {
-        setSubject(
-          raw.slice(0, sep).replace(/^subject[:\s]*/i, "").trim(),
-        );
+        setSubject(raw.slice(0, sep).replace(/^subject[:\s]*/i, "").trim());
         setBody(raw.slice(sep + 10).trim());
       }
     } catch (err) {
@@ -110,41 +108,22 @@ export default function EmailComposer() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Recipient type</label>
-          <select
-            value={recipientType}
-            onChange={(e) => setRecipientType(e.target.value as RecipientType)}
-            className={fieldCls}
-          >
-            {RECIPIENT_TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
+          <select value={recipientType} onChange={(e) => setRecipientType(e.target.value as RecipientType)} className={fieldCls}>
+            {RECIPIENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
           <label className={labelCls}>Tone</label>
-          <select
-            value={tone}
-            onChange={(e) => setTone(e.target.value as Tone)}
-            className={fieldCls}
-          >
-            {TONES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
+          <select value={tone} onChange={(e) => setTone(e.target.value as Tone)} className={fieldCls}>
+            {TONES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Custom recipient input (shown only when Custom selected) */}
       {recipientType === "Custom" && (
         <div>
           <label className={labelCls}>Custom recipient title</label>
-          <input
-            type="text"
-            value={customRecipient}
-            onChange={(e) => setCustomRecipient(e.target.value)}
-            placeholder="e.g. VP of Engineering"
-            className={fieldCls}
-          />
+          <input type="text" value={customRecipient} onChange={(e) => setCustomRecipient(e.target.value)} placeholder="e.g. VP of Engineering" className={fieldCls} />
         </div>
       )}
 
@@ -152,23 +131,11 @@ export default function EmailComposer() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>Company</label>
-          <input
-            type="text"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            placeholder="Acme Corp"
-            className={fieldCls}
-          />
+          <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Corp" className={fieldCls} />
         </div>
         <div>
           <label className={labelCls}>Role</label>
-          <input
-            type="text"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="Senior Software Engineer"
-            className={fieldCls}
-          />
+          <input type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="Senior Software Engineer" className={fieldCls} />
         </div>
       </div>
 
@@ -186,21 +153,18 @@ export default function EmailComposer() {
             </svg>
             Generating…
           </span>
-        ) : (
-          "Generate"
-        )}
+        ) : "Generate"}
       </button>
 
-      {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
 
       {/* ── Results ───────────────────────────────────────────────────────── */}
       {ran && (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm space-y-5">
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5 space-y-5">
 
           {/* Subject line */}
           <div>
@@ -209,15 +173,9 @@ export default function EmailComposer() {
               {!loading && subject && <CopyButton text={subject} />}
             </div>
             {loading ? (
-              <div className="animate-pulse h-9 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+              <div className="animate-pulse h-9 bg-white/10 rounded-lg" />
             ) : (
-              <input
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Subject line will appear here…"
-                className={fieldCls}
-              />
+              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject line will appear here…" className={fieldCls} />
             )}
           </div>
 
@@ -230,13 +188,7 @@ export default function EmailComposer() {
             {loading ? (
               <BodySkeleton />
             ) : (
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Email body will appear here…"
-                rows={12}
-                className={fieldCls + " resize-y font-[inherit]"}
-              />
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Email body will appear here…" rows={12} className={fieldCls + " resize-y font-[inherit]"} />
             )}
           </div>
 
