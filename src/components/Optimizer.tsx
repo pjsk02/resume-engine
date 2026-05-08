@@ -25,10 +25,7 @@ async function downloadDocx(text: string) {
   const doc = new Document({ sections: [{ children: paragraphs }] });
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement("a"), {
-    href: url,
-    download: "resume.docx",
-  });
+  const a = Object.assign(document.createElement("a"), { href: url, download: "resume.docx" });
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -42,14 +39,24 @@ function downloadPdf(text: string) {
   const lines = doc.splitTextToSize(text, 180) as string[];
   let y = margin;
   for (const line of lines) {
-    if (y + lineH > pageH) {
-      doc.addPage();
-      y = margin;
-    }
+    if (y + lineH > pageH) { doc.addPage(); y = margin; }
     doc.text(line, margin, y);
     y += lineH;
   }
   doc.save("resume.pdf");
+}
+
+// Splits the model output into the resume body and the strategist's notes.
+// The ResumeSkill.md instructs the model to output PART A then PART B.
+function splitOutput(raw: string): { resume: string; notes: string } {
+  const divider = raw.search(/strategist'?s?\s+(?:brief|notes?)/i);
+  if (divider === -1) return { resume: raw.trim(), notes: "" };
+  const resume = raw
+    .slice(0, divider)
+    .replace(/^PART\s+A[\s\S]{0,60}?\n/im, "")
+    .trim();
+  const notes = raw.slice(divider).trim();
+  return { resume, notes };
 }
 
 // ─── Skeleton loaders ─────────────────────────────────────────────────────────
@@ -59,7 +66,7 @@ function ResumeSkeleton() {
   return (
     <div className="animate-pulse space-y-2 py-1">
       {widths.map((w, i) => (
-        <div key={i} className="h-3 bg-gray-200 dark:bg-gray-700 rounded" style={{ width: w }} />
+        <div key={i} className="h-3 bg-white/10 rounded" style={{ width: w }} />
       ))}
     </div>
   );
@@ -68,20 +75,20 @@ function ResumeSkeleton() {
 function ATSSkeleton() {
   return (
     <div className="animate-pulse space-y-5">
-      <div className="h-14 w-28 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+      <div className="h-14 w-28 bg-white/10 rounded-lg" />
       <div className="space-y-2">
-        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-3 w-16 bg-white/10 rounded" />
         <div className="flex flex-wrap gap-1.5">
           {[72, 88, 60, 96, 80].map((w) => (
-            <div key={w} className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full" style={{ width: w }} />
+            <div key={w} className="h-5 bg-white/10 rounded-full" style={{ width: w }} />
           ))}
         </div>
       </div>
       <div className="space-y-2">
-        <div className="h-3 w-14 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-3 w-14 bg-white/10 rounded" />
         <div className="flex flex-wrap gap-1.5">
           {[68, 84, 76, 58].map((w) => (
-            <div key={w} className="h-5 bg-gray-200 dark:bg-gray-700 rounded-full" style={{ width: w }} />
+            <div key={w} className="h-5 bg-white/10 rounded-full" style={{ width: w }} />
           ))}
         </div>
       </div>
@@ -93,7 +100,7 @@ function VerbsSkeleton() {
   return (
     <div className="animate-pulse flex flex-wrap gap-2">
       {[72, 88, 64, 80, 76, 68, 90, 74, 62, 84].map((w, i) => (
-        <div key={i} className="h-8 bg-gray-200 dark:bg-gray-700 rounded-full" style={{ width: w }} />
+        <div key={i} className="h-8 bg-white/10 rounded-full" style={{ width: w }} />
       ))}
     </div>
   );
@@ -102,16 +109,18 @@ function VerbsSkeleton() {
 // ─── Shared textarea classes ──────────────────────────────────────────────────
 
 const inputCls =
-  "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 " +
-  "text-gray-900 dark:text-gray-100 p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500";
+  "w-full rounded-lg border border-white/10 bg-black/40 " +
+  "text-white placeholder:text-white/30 p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
+const STORAGE_KEY = "re:system-prompt-override";
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Optimizer() {
   const [jd, setJd] = useState("");
   const [resume, setResume] = useState("");
-  const [defaultSkills, setDefaultSkills] = useState("");
-  const [customSkills, setCustomSkills] = useState("");
+  const [defaultPrompt, setDefaultPrompt] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
 
@@ -119,44 +128,44 @@ export default function Optimizer() {
   const [ran, setRan] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [optimized, setOptimized] = useState<string | null>(null);
+  const [optimizedResume, setOptimizedResume] = useState<string | null>(null);
+  const [strategistNotes, setStrategistNotes] = useState<string>("");
   const [ats, setAts] = useState<ATSResult | null>(null);
   const [verbs, setVerbs] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Restore any previously saved custom skills so the override survives a refresh
-    const saved = localStorage.getItem("re:skills-override");
-    if (saved) { setCustomSkills(saved); setIsCustom(true); }
+    // Restore any saved custom system prompt
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) { setCustomPrompt(saved); setIsCustom(true); }
 
-    fetch("/skills.json")
-      .then((r) => r.json())
-      .then((data) => setDefaultSkills(JSON.stringify(data, null, 2)))
+    // Load the default system prompt from public/
+    fetch("/ResumeSkill.md")
+      .then((r) => r.text())
+      .then((text) => setDefaultPrompt(text))
       .catch(() => {});
   }, []);
 
-  const skillsText = isCustom ? customSkills : defaultSkills;
+  const systemPrompt = isCustom ? customPrompt : defaultPrompt;
 
   const handleOptimize = async () => {
     if (!jd.trim() || !resume.trim()) return;
     setLoading(true);
     setRan(true);
     setError(null);
-    setOptimized(null);
+    setOptimizedResume(null);
+    setStrategistNotes("");
     setAts(null);
     setVerbs(null);
 
-    const SYSTEM =
-      "You are a professional resume coach. Given a job description, a resume, and optional skill preferences, " +
-      "rewrite the resume to maximise ATS match while preserving the candidate's authentic voice. " +
-      "Output ONLY the full rewritten resume text — no commentary.";
-
     try {
-      const [optimizedText, atsRaw, verbsRaw] = await Promise.all([
+      const [rawOutput, atsRaw, verbsRaw] = await Promise.all([
+        // Main rewrite — uses the full ResumeSkill.md system prompt
         callLLM(
-          `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}\n\nSKILL PREFERENCES:\n${skillsText}`,
-          SYSTEM,
+          `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`,
+          systemPrompt || undefined,
         ),
+        // ATS score — independent call, no custom system prompt needed
         callLLM(
           `Score this resume against this JD from 0-100 for ATS compatibility. ` +
           `Return JSON: {"score": number, "matched": string[], "missing": string[]}\n\n` +
@@ -164,6 +173,7 @@ export default function Optimizer() {
           undefined,
           1024,
         ),
+        // Power verbs — independent call
         callLLM(
           `Extract the 10 most impactful action verbs from this JD. Return a JSON array of strings only.\n\n` +
           `JOB DESCRIPTION:\n${jd}`,
@@ -172,19 +182,15 @@ export default function Optimizer() {
         ),
       ]);
 
-      setOptimized(optimizedText);
+      const { resume: resumeText, notes } = splitOutput(rawOutput);
+      setOptimizedResume(resumeText);
+      setStrategistNotes(notes);
 
-      try {
-        setAts(extractJson(atsRaw) as ATSResult);
-      } catch {
-        setAts({ score: 0, matched: [], missing: ["Could not parse ATS response"] });
-      }
+      try { setAts(extractJson(atsRaw) as ATSResult); }
+      catch { setAts({ score: 0, matched: [], missing: ["Could not parse ATS response"] }); }
 
-      try {
-        setVerbs(extractJson(verbsRaw) as string[]);
-      } catch {
-        setVerbs([]);
-      }
+      try { setVerbs(extractJson(verbsRaw) as string[]); }
+      catch { setVerbs([]); }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
@@ -193,17 +199,17 @@ export default function Optimizer() {
   };
 
   const handleCopy = async () => {
-    if (!optimized) return;
-    await navigator.clipboard.writeText(optimized);
+    if (!optimizedResume) return;
+    await navigator.clipboard.writeText(optimizedResume);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const scoreColor =
-    !ats ? "text-gray-400"
-    : ats.score >= 80 ? "text-emerald-500"
-    : ats.score >= 60 ? "text-amber-500"
-    : "text-red-500";
+    !ats ? "text-white/40"
+    : ats.score >= 80 ? "text-emerald-400"
+    : ats.score >= 60 ? "text-amber-400"
+    : "text-red-400";
 
   return (
     <div className="space-y-6">
@@ -211,84 +217,62 @@ export default function Optimizer() {
       {/* ── Input row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Job Description
-          </label>
-          <textarea
-            value={jd}
-            onChange={(e) => setJd(e.target.value)}
-            placeholder="Paste the job description here…"
-            rows={13}
-            className={inputCls}
-          />
+          <label className="block text-sm font-medium text-white/60">Job Description</label>
+          <textarea value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the job description here…" rows={13} className={inputCls} />
         </div>
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Resume
-          </label>
-          <textarea
-            value={resume}
-            onChange={(e) => setResume(e.target.value)}
-            placeholder="Paste your resume as plain text here…"
-            rows={13}
-            className={inputCls}
-          />
+          <label className="block text-sm font-medium text-white/60">Resume</label>
+          <textarea value={resume} onChange={(e) => setResume(e.target.value)} placeholder="Paste your resume as plain text here…" rows={13} className={inputCls} />
         </div>
       </div>
 
-      {/* ── Skills preferences panel ──────────────────────────────────────── */}
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {/* ── System prompt panel ───────────────────────────────────────────── */}
+      <div className="rounded-lg border border-white/10 overflow-hidden">
         <button
           onClick={() => setPanelOpen((p) => !p)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 bg-white/5 text-sm font-medium text-white/70 hover:bg-white/10 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <span>Skills preferences</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                isCustom
-                  ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300"
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-              }`}
-            >
-              {isCustom ? "using custom" : "using default"}
+            <span>System prompt</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              isCustom ? "bg-indigo-500/20 text-indigo-300" : "bg-white/10 text-white/40"
+            }`}>
+              {isCustom ? "custom" : "default"}
             </span>
           </div>
-          <svg
-            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${panelOpen ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
+          <svg className={`w-4 h-4 text-white/40 transition-transform duration-200 ${panelOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
 
         {panelOpen && (
-          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-4 bg-gray-50 dark:bg-gray-900/50 space-y-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Auto-loaded from{" "}
-              <code className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-[11px]">
-                /skills.json
+          <div className="border-t border-white/10 px-4 py-4 bg-black/20 space-y-3">
+            <p className="text-xs text-white/40">
+              Loaded from{" "}
+              <code className="font-mono bg-white/10 px-1 py-0.5 rounded text-[11px] text-white/60">
+                ResumeSkill.md
               </code>
-              . Edit or paste your own JSON to override.
+              . Edit to customize the AI's rewriting strategy for this session.
             </p>
             <textarea
-              value={isCustom ? customSkills : defaultSkills}
+              value={isCustom ? customPrompt : defaultPrompt}
               onChange={(e) => {
-                setCustomSkills(e.target.value);
+                setCustomPrompt(e.target.value);
                 setIsCustom(true);
-                localStorage.setItem("re:skills-override", e.target.value);
+                localStorage.setItem(STORAGE_KEY, e.target.value);
               }}
-              rows={9}
+              rows={14}
               spellCheck={false}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-3 text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-white/10 bg-black/40 text-white/80 placeholder:text-white/30 p-3 text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {isCustom && (
               <button
-                onClick={() => { setIsCustom(false); setCustomSkills(""); localStorage.removeItem("re:skills-override"); }}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline underline-offset-2 transition-colors"
+                onClick={() => {
+                  setIsCustom(false);
+                  setCustomPrompt("");
+                  localStorage.removeItem(STORAGE_KEY);
+                }}
+                className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2 transition-colors"
               >
                 Reset to default
               </button>
@@ -311,52 +295,40 @@ export default function Optimizer() {
             </svg>
             Optimizing…
           </span>
-        ) : (
-          "Optimize Resume"
-        )}
+        ) : "Optimize Resume"}
       </button>
 
-      {/* ── Error banner ──────────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
 
-      {/* ── Result cards (visible as soon as Optimize is pressed) ─────────── */}
+      {/* ── Result cards ──────────────────────────────────────────────────── */}
       {ran && (
         <div className="space-y-4">
 
           {/* Card 1 — Optimized Resume */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Optimized Resume</h3>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="font-semibold text-white mb-4">Optimized Resume</h3>
             {loading ? (
               <ResumeSkeleton />
-            ) : optimized !== null ? (
+            ) : optimizedResume !== null ? (
               <div className="space-y-3">
                 <textarea
                   readOnly
-                  value={optimized}
+                  value={optimizedResume}
                   rows={18}
-                  className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-3 text-sm font-mono resize-y focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-black/50 text-white/80 p-3 text-sm font-mono resize-y focus:outline-none"
                 />
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleCopy}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
+                  <button onClick={handleCopy} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     {copied ? "✓ Copied" : "Copy"}
                   </button>
-                  <button
-                    onClick={() => downloadDocx(optimized)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
+                  <button onClick={() => downloadDocx(optimizedResume)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     Download DOCX
                   </button>
-                  <button
-                    onClick={() => downloadPdf(optimized)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
+                  <button onClick={() => downloadPdf(optimizedResume)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     Download PDF
                   </button>
                 </div>
@@ -364,53 +336,47 @@ export default function Optimizer() {
             ) : null}
           </div>
 
+          {/* Card 2 — Strategist's Notes (only shown when present) */}
+          {!loading && strategistNotes && (
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-sm p-5">
+              <h3 className="font-semibold text-indigo-300 mb-3 text-sm uppercase tracking-wide">
+                Strategist's Notes
+              </h3>
+              <pre className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed font-[inherit]">
+                {strategistNotes}
+              </pre>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* Card 2 — ATS Score */}
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">ATS Score</h3>
+            {/* Card 3 — ATS Score */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+              <h3 className="font-semibold text-white mb-4">ATS Score</h3>
               {loading ? (
                 <ATSSkeleton />
               ) : ats !== null ? (
                 <div className="space-y-4">
                   <div className="flex items-end gap-1.5">
-                    <span className={`text-6xl font-bold tabular-nums leading-none ${scoreColor}`}>
-                      {ats.score}
-                    </span>
-                    <span className="text-gray-400 dark:text-gray-500 text-sm mb-1">/ 100</span>
+                    <span className={`text-6xl font-bold tabular-nums leading-none ${scoreColor}`}>{ats.score}</span>
+                    <span className="text-white/30 text-sm mb-1">/ 100</span>
                   </div>
-
                   {ats.matched.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">
-                        Matched
-                      </p>
+                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Matched</p>
                       <div className="flex flex-wrap gap-1.5">
                         {ats.matched.map((kw) => (
-                          <span
-                            key={kw}
-                            className="px-2 py-0.5 text-xs rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                          >
-                            {kw}
-                          </span>
+                          <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">{kw}</span>
                         ))}
                       </div>
                     </div>
                   )}
-
                   {ats.missing.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-red-500 uppercase tracking-wider mb-2">
-                        Missing
-                      </p>
+                      <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Missing</p>
                       <div className="flex flex-wrap gap-1.5">
                         {ats.missing.map((kw) => (
-                          <span
-                            key={kw}
-                            className="px-2 py-0.5 text-xs rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-                          >
-                            {kw}
-                          </span>
+                          <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-red-500/15 text-red-300 border border-red-500/20">{kw}</span>
                         ))}
                       </div>
                     </div>
@@ -419,20 +385,15 @@ export default function Optimizer() {
               ) : null}
             </div>
 
-            {/* Card 3 — Power Verbs */}
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Power Verbs</h3>
+            {/* Card 4 — Power Verbs */}
+            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+              <h3 className="font-semibold text-white mb-4">Power Verbs</h3>
               {loading ? (
                 <VerbsSkeleton />
               ) : verbs !== null ? (
                 <div className="flex flex-wrap gap-2">
                   {verbs.map((verb) => (
-                    <span
-                      key={verb}
-                      className="px-3 py-1.5 text-sm font-medium rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800"
-                    >
-                      {verb}
-                    </span>
+                    <span key={verb} className="px-3 py-1.5 text-sm font-medium rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">{verb}</span>
                   ))}
                 </div>
               ) : null}
