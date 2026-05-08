@@ -80,9 +80,11 @@ export default function SettingsPanel({ isOpen, onClose }: Props) {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
-                import.meta.env.VITE_OPENROUTER_KEY
-                  ? "Using VITE_OPENROUTER_KEY env var"
-                  : "sk-or-..."
+                import.meta.env.VITE_ANTHROPIC_KEY
+                  ? "Using VITE_ANTHROPIC_KEY (Anthropic)"
+                  : import.meta.env.VITE_OPENROUTER_KEY
+                  ? "Using VITE_OPENROUTER_KEY (OpenRouter)"
+                  : "sk-ant-… or sk-or-…"
               }
               className="w-full rounded-lg border border-white/10 bg-black/40 text-white placeholder:text-white/30 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -93,9 +95,11 @@ export default function SettingsPanel({ isOpen, onClose }: Props) {
               {keySaved ? "✓ Saved" : "Update key"}
             </button>
             <p className="text-xs text-white/30">
-              Stored in{" "}
-              <code className="font-mono text-[11px]">sessionStorage</code>{" "}
-              — clears automatically when the tab is closed.
+              Accepts{" "}
+              <code className="font-mono text-[11px]">sk-ant-…</code> (Anthropic) or{" "}
+              <code className="font-mono text-[11px]">sk-or-…</code> (OpenRouter).
+              Stored in <code className="font-mono text-[11px]">sessionStorage</code>{" "}
+              — clears when the tab closes.
             </p>
           </section>
 
