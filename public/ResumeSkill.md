@@ -47,6 +47,26 @@ You may invent: projects, metrics, tools, platforms, and domain exposure that al
 
 **R11 — PRESERVE STRUCTURE.** Keep original sections, section order, and formatting. Rewrite content only.
 
+**R12 — REORDER PROJECTS BY JD RELEVANCE.** Within the projects section, surface the most JD-relevant projects first. You may rename project titles to better mirror JD language. Do not delete any project the candidate listed.
+
+**R13 — EDUCATION: OUTPUT AS-IS.** Do not rewrite the education section. Copy it exactly as provided in the candidate's resume — no changes whatsoever.
+
+**R14 — SKILLS: EXACTLY 5 LINES.** The skills section must have exactly 5 lines. Category headings may be renamed to best match the JD. Prioritize JD-required tools in the first 2 lines.
+
+**R15 — ZERO AI SLOP. HUMAN VOICE ONLY.**
+Every bullet must read like it was written by the candidate from memory — not generated.
+
+Banned sentence openers: "Leveraged", "Spearheaded", "Utilized", "Championed", "Orchestrated", "Fostered", "Demonstrated", "Ensured", "Facilitated".
+
+Banned phrases anywhere in the resume: "in a fast-paced environment", "cross-functional collaboration", "cutting-edge", "robust solution", "seamlessly", "end-to-end solution", "drove business value", "best-in-class", "synergy", "impactful", "game-changing", "next-generation", "transformative".
+
+Banned structural patterns:
+- Three-part bullet padding: "X, Y, and Z to achieve [vague outcome]"
+- Fake precision: metrics that sound invented ("improved efficiency by 47%") — use round or range numbers unless the candidate provided the exact figure
+- Stacked superlatives: "highly scalable, enterprise-grade, production-ready"
+
+The test: read each bullet aloud. If it sounds like it came from a LinkedIn post written by a bot, rewrite it. The voice should sound like a sharp engineer explaining what they did to a colleague — direct, specific, slightly informal, grounded in real detail.
+
 ---
 
 ## OUTPUT FORMAT
