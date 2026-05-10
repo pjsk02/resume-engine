@@ -252,6 +252,35 @@ export default function Optimizer() {
     ]);
   };
 
+  const handleSaveAll = async () => {
+    if (!optimizedResume) return;
+    const boldRuns = (line: string) =>
+      line.split(/(\*\*[^*]+\*\*)/g).map((part) =>
+        part.startsWith("**") && part.endsWith("**")
+          ? new TextRun({ text: part.slice(2, -2), bold: true })
+          : new TextRun({ text: part })
+      );
+
+    const children = [
+      new Paragraph({ heading: "Heading1", children: [new TextRun("OPTIMIZED RESUME")] }),
+      ...optimizedResume.split("\n").map((line) => new Paragraph({ children: boldRuns(line) })),
+    ];
+
+    if (strategistNotes) {
+      children.push(
+        new Paragraph({ heading: "Heading1", children: [new TextRun("STRATEGIST'S NOTES")] }),
+        ...strategistNotes.split("\n").map((line) => new Paragraph({ children: [new TextRun(line)] })),
+      );
+    }
+
+    const doc = new Document({ sections: [{ children }] });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: "optimized-resume-full.docx" });
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const scoreColor = (score: number) =>
     score >= 80 ? "text-emerald-400"
     : score >= 60 ? "text-amber-400"
@@ -376,6 +405,9 @@ export default function Optimizer() {
                   </button>
                   <button onClick={() => downloadPdf(optimizedResume)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     Download PDF
+                  </button>
+                  <button onClick={handleSaveAll} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
+                    Save Full Output
                   </button>
                 </div>
               </div>
