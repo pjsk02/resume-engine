@@ -23,9 +23,14 @@ function extractJson(raw: string): unknown {
 }
 
 async function downloadDocx(text: string) {
-  const paragraphs = text
-    .split("\n")
-    .map((line) => new Paragraph({ children: [new TextRun(line)] }));
+  const paragraphs = text.split("\n").map((line) => {
+    const runs = line.split(/(\*\*[^*]+\*\*)/g).map((part) =>
+      part.startsWith("**") && part.endsWith("**")
+        ? new TextRun({ text: part.slice(2, -2), bold: true })
+        : new TextRun({ text: part })
+    );
+    return new Paragraph({ children: runs });
+  });
   const doc = new Document({ sections: [{ children: paragraphs }] });
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
@@ -229,6 +234,24 @@ export default function Optimizer() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyRich = async () => {
+    if (!optimizedResume) return;
+    const html = optimizedResume
+      .split("\n")
+      .map((line) => {
+        const withBold = line.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        return `<p>${withBold}</p>`;
+      })
+      .join("");
+    const plain = optimizedResume.replace(/\*\*/g, "");
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html":  new Blob([html],  { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" }),
+      }),
+    ]);
+  };
+
   const scoreColor = (score: number) =>
     score >= 80 ? "text-emerald-400"
     : score >= 60 ? "text-amber-400"
@@ -344,6 +367,9 @@ export default function Optimizer() {
                 <div className="flex flex-wrap gap-2">
                   <button onClick={handleCopy} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     {copied ? "✓ Copied" : "Copy"}
+                  </button>
+                  <button onClick={handleCopyRich} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
+                    Copy (with bold)
                   </button>
                   <button onClick={() => downloadDocx(optimizedResume)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     Download DOCX
