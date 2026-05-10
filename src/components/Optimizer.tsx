@@ -206,6 +206,7 @@ export default function Optimizer() {
           "Extract the 10 most impactful action verbs from this JD. " +
           "Return ONLY a JSON array of strings, no explanation: [verb1, verb2, ...]",
           300,
+          "claude-haiku-4-5-20251001",
         ),
       ]);
 

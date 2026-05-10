@@ -30,9 +30,10 @@ async function postAnthropic(
   userContent: unknown,
   system: string | undefined,
   maxTokens: number,
+  model = "claude-sonnet-4-6",
 ): Promise<string> {
   const body: Record<string, unknown> = {
-    model: "claude-sonnet-4-6",
+    model,
     max_tokens: maxTokens,
     messages: [{ role: "user", content: userContent }],
   };
@@ -92,14 +93,15 @@ export async function callLLM(
   prompt: string,
   system?: string,
   maxTokens = 4096,
+  model = "claude-sonnet-4-6",
 ): Promise<string> {
   const { key, provider } = resolveAuth();
 
   if (provider === "anthropic") {
-    return postAnthropic(key, prompt, system, maxTokens);
+    return postAnthropic(key, prompt, system, maxTokens, model);
   }
 
-  // OpenRouter — system becomes a role:system message
+  // OpenRouter — system becomes a role:system message; model param ignored (free tier fixed)
   const messages: Array<{ role: string; content: string }> = [];
   if (system) messages.push({ role: "system", content: system });
   messages.push({ role: "user", content: prompt });
