@@ -36,13 +36,20 @@ async function postAnthropic(
     max_tokens: maxTokens,
     messages: [{ role: "user", content: userContent }],
   };
-  if (system) body.system = system;
+
+  // Send system prompt as a cacheable block — Anthropic charges 10% of normal
+  // input cost on cache hits. The system prompt is identical across all runs,
+  // making it the ideal cache candidate. Cache TTL is 5 minutes.
+  if (system) {
+    body.system = [{ type: "text", text: system, cache_control: { type: "ephemeral" } }];
+  }
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": key,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
       "anthropic-dangerous-direct-browser-access": "true",
       "content-type": "application/json",
     },
