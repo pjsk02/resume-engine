@@ -5,10 +5,14 @@ import { callLLM } from "../services/llm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ATSResult {
+interface SingleATS {
   score: number;
   matched: string[];
   missing: string[];
+}
+interface ATSResult {
+  before: SingleATS;
+  after: SingleATS;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -57,6 +61,21 @@ function splitOutput(raw: string): { resume: string; notes: string } {
     .trim();
   const notes = raw.slice(divider).trim();
   return { resume, notes };
+}
+
+function renderBold(text: string) {
+  return text.split("\n").map((line, li) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <span key={li} className="block">
+        {parts.map((part, pi) =>
+          part.startsWith("**") && part.endsWith("**")
+            ? <strong key={pi} className="font-bold text-white">{part.slice(2, -2)}</strong>
+            : <span key={pi}>{part}</span>
+        )}
+      </span>
+    );
+  });
 }
 
 // ─── Skeleton loaders ─────────────────────────────────────────────────────────
@@ -158,28 +177,21 @@ export default function Optimizer() {
     setAts(null);
     setVerbs(null);
 
+    const atsSys =
+      "Score the resume against the JD from 0–100 for ATS compatibility. " +
+      "Return ONLY valid JSON: {score: number, matched: string[], missing: string[]}";
+
     try {
-      const [rawOutput, atsRaw, verbsRaw] = await Promise.all([
-        // Main rewrite — uses the full ResumeSkill.md system prompt
+      // Step 1: rewrite + verbs in parallel (verbs only need the JD)
+      const [rawOutput, verbsRaw] = await Promise.all([
         callLLM(
           `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`,
           systemPrompt || undefined,
         ),
-
-        // ATS score — short dedicated system prompt, no resume strategy needed
-        callLLM(
-          `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`,
-          `Score the resume against the JD from 0–100 for ATS compatibility. ` +
-          `Return ONLY valid JSON, no explanation: ` +
-          `{"score": number, "matched": string[], "missing": string[]}`,
-          512,
-        ),
-
-        // Power verbs — JD only, no resume needed
         callLLM(
           `JOB DESCRIPTION:\n${jd}`,
-          `Extract the 10 most impactful action verbs from this JD. ` +
-          `Return ONLY a JSON array of strings, no explanation: ["verb1", "verb2", ...]`,
+          "Extract the 10 most impactful action verbs from this JD. " +
+          "Return ONLY a JSON array of strings, no explanation: [verb1, verb2, ...]",
           300,
         ),
       ]);
@@ -188,11 +200,21 @@ export default function Optimizer() {
       setOptimizedResume(resumeText);
       setStrategistNotes(notes);
 
-      try { setAts(extractJson(atsRaw) as ATSResult); }
-      catch { setAts({ score: 0, matched: [], missing: ["Could not parse ATS response"] }); }
-
       try { setVerbs(extractJson(verbsRaw) as string[]); }
       catch { setVerbs([]); }
+
+      // Step 2: score original vs optimized in parallel
+      const [beforeRaw, afterRaw] = await Promise.all([
+        callLLM(`JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`, atsSys, 512),
+        callLLM(`JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resumeText}`, atsSys, 512),
+      ]);
+
+      const fallback: SingleATS = { score: 0, matched: [], missing: ["Could not parse ATS response"] };
+      let before: SingleATS = fallback;
+      let after: SingleATS = fallback;
+      try { before = extractJson(beforeRaw) as SingleATS; } catch { /* use fallback */ }
+      try { after  = extractJson(afterRaw)  as SingleATS; } catch { /* use fallback */ }
+      setAts({ before, after });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
@@ -207,10 +229,9 @@ export default function Optimizer() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const scoreColor =
-    !ats ? "text-white/40"
-    : ats.score >= 80 ? "text-emerald-400"
-    : ats.score >= 60 ? "text-amber-400"
+  const scoreColor = (score: number) =>
+    score >= 80 ? "text-emerald-400"
+    : score >= 60 ? "text-amber-400"
     : "text-red-400";
 
   return (
@@ -317,12 +338,9 @@ export default function Optimizer() {
               <ResumeSkeleton />
             ) : optimizedResume !== null ? (
               <div className="space-y-3">
-                <textarea
-                  readOnly
-                  value={optimizedResume}
-                  rows={18}
-                  className="w-full rounded-lg border border-white/10 bg-black/50 text-white/80 p-3 text-sm font-mono resize-y focus:outline-none"
-                />
+                <div className="w-full rounded-lg border border-white/10 bg-black/50 text-white/80 p-3 text-sm font-mono leading-relaxed min-h-80 max-h-[36rem] overflow-y-auto whitespace-pre-wrap">
+                  {renderBold(optimizedResume)}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={handleCopy} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                     {copied ? "✓ Copied" : "Copy"}
@@ -359,25 +377,39 @@ export default function Optimizer() {
                 <ATSSkeleton />
               ) : ats !== null ? (
                 <div className="space-y-4">
-                  <div className="flex items-end gap-1.5">
-                    <span className={`text-6xl font-bold tabular-nums leading-none ${scoreColor}`}>{ats.score}</span>
-                    <span className="text-white/30 text-sm mb-1">/ 100</span>
+                  {/* Before / After scores */}
+                  <div className="flex items-end gap-4">
+                    <div className="space-y-0.5">
+                      <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Before</p>
+                      <div className="flex items-end gap-1">
+                        <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(ats.before.score)}`}>{ats.before.score}</span>
+                        <span className="text-white/30 text-sm mb-0.5">/ 100</span>
+                      </div>
+                    </div>
+                    <span className="text-white/20 text-2xl mb-1">→</span>
+                    <div className="space-y-0.5">
+                      <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">After</p>
+                      <div className="flex items-end gap-1">
+                        <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(ats.after.score)}`}>{ats.after.score}</span>
+                        <span className="text-white/30 text-sm mb-0.5">/ 100</span>
+                      </div>
+                    </div>
                   </div>
-                  {ats.matched.length > 0 && (
+                  {ats.after.matched.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Matched</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {ats.matched.map((kw) => (
+                        {ats.after.matched.map((kw) => (
                           <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">{kw}</span>
                         ))}
                       </div>
                     </div>
                   )}
-                  {ats.missing.length > 0 && (
+                  {ats.after.missing.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Missing</p>
+                      <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Still Missing</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {ats.missing.map((kw) => (
+                        {ats.after.missing.map((kw) => (
                           <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-red-500/15 text-red-300 border border-red-500/20">{kw}</span>
                         ))}
                       </div>
