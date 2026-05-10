@@ -284,7 +284,10 @@ export default function Optimizer() {
     : "text-red-400";
 
   return (
-    <div className="space-y-6">
+    <div className="flex gap-6 items-start">
+
+      {/* ── Left column (~75%) — inputs + results ─────────────────────────── */}
+      <div className="flex-1 min-w-0 space-y-6">
 
       {/* ── Input row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -423,108 +426,116 @@ export default function Optimizer() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            {/* Card 3 — ATS Score */}
-            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-              <h3 className="font-semibold text-white mb-4">ATS Score</h3>
-              {loading ? (
-                <ATSSkeleton />
-              ) : ats !== null ? (
-                <div className="space-y-4">
-
-                  {/* Score numbers */}
-                  <div className="flex items-end justify-between">
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Before</p>
-                      <div className="flex items-end gap-1">
-                        <span className="text-4xl font-bold tabular-nums leading-none text-white/40">{ats.before.score}</span>
-                        <span className="text-white/20 text-sm mb-0.5">/ 100</span>
-                      </div>
-                    </div>
-                    <div className="space-y-0.5 text-right">
-                      <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">After</p>
-                      <div className="flex items-end justify-end gap-1">
-                        <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(ats.after.score)}`}>{ats.after.score}</span>
-                        <span className="text-white/20 text-sm mb-0.5">/ 100</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress bars */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full rounded-full bg-white/30 transition-all" style={{ width: `${ats.before.score}%` }} />
-                    </div>
-                    <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                    <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          ats.after.score >= 80 ? "bg-emerald-400" : ats.after.score >= 60 ? "bg-amber-400" : "bg-red-400"
-                        }`}
-                        style={{ width: `${ats.after.score}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Delta badge */}
-                  {ats.after.score > ats.before.score ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
-                      +{ats.after.score - ats.before.score} improvement
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/30 text-xs font-medium">
-                      No change
-                    </span>
-                  )}
-
-                  {/* Matched keywords */}
-                  {ats.after.matched.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Matched</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ats.after.matched.map((kw) => (
-                          <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">{kw}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Still missing keywords */}
-                  {ats.after.missing.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Still Missing</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ats.after.missing.map((kw) => (
-                          <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-red-500/15 text-red-300 border border-red-500/20">{kw}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              ) : null}
-            </div>
-
-            {/* Card 4 — Power Verbs */}
-            <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-              <h3 className="font-semibold text-white mb-4">Power Verbs</h3>
-              {loading ? (
-                <VerbsSkeleton />
-              ) : verbs !== null ? (
-                <div className="flex flex-wrap gap-2">
-                  {verbs.map((verb) => (
-                    <span key={verb} className="px-3 py-1.5 text-sm font-medium rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">{verb}</span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-          </div>
         </div>
       )}
+
+      </div>{/* end left column */}
+
+      {/* ── Right column (~25%) — ATS + Verbs, sticky ─────────────────────── */}
+      <div className="w-72 flex-shrink-0 sticky top-6 space-y-4 self-start">
+
+        {/* Card 3 — ATS Score */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+          <h3 className="font-semibold text-white mb-4">ATS Score</h3>
+          {loading ? (
+            <ATSSkeleton />
+          ) : ats !== null ? (
+            <div className="space-y-4">
+
+              {/* Score numbers */}
+              <div className="flex items-end justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Before</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold tabular-nums leading-none text-white/40">{ats.before.score}</span>
+                    <span className="text-white/20 text-sm mb-0.5">/ 100</span>
+                  </div>
+                </div>
+                <div className="space-y-0.5 text-right">
+                  <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">After</p>
+                  <div className="flex items-end justify-end gap-1">
+                    <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(ats.after.score)}`}>{ats.after.score}</span>
+                    <span className="text-white/20 text-sm mb-0.5">/ 100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress bars */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full bg-white/30 transition-all" style={{ width: `${ats.before.score}%` }} />
+                </div>
+                <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      ats.after.score >= 80 ? "bg-emerald-400" : ats.after.score >= 60 ? "bg-amber-400" : "bg-red-400"
+                    }`}
+                    style={{ width: `${ats.after.score}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Delta badge */}
+              {ats.after.score > ats.before.score ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
+                  +{ats.after.score - ats.before.score} improvement
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/30 text-xs font-medium">
+                  No change
+                </span>
+              )}
+
+              {/* Matched keywords */}
+              {ats.after.matched.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Matched</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ats.after.matched.map((kw) => (
+                      <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Still missing keywords */}
+              {ats.after.missing.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Still Missing</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ats.after.missing.map((kw) => (
+                      <span key={kw} className="px-2 py-0.5 text-xs rounded-full bg-red-500/15 text-red-300 border border-red-500/20">{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          ) : (
+            <p className="text-xs text-white/20">Run the optimizer to see your ATS score.</p>
+          )}
+        </div>
+
+        {/* Card 4 — Power Verbs */}
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+          <h3 className="font-semibold text-white mb-4">Power Verbs</h3>
+          {loading ? (
+            <VerbsSkeleton />
+          ) : verbs !== null ? (
+            <div className="flex flex-wrap gap-2">
+              {verbs.map((verb) => (
+                <span key={verb} className="px-3 py-1.5 text-sm font-medium rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">{verb}</span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-white/20">Run the optimizer to extract power verbs.</p>
+          )}
+        </div>
+
+      </div>{/* end right column */}
 
     </div>
   );
