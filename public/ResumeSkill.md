@@ -75,6 +75,17 @@ The test: read each bullet aloud. If it sounds like it came from a LinkedIn post
 Full resume as it would appear on the page. Bold with **double asterisks**. Maintain all original section headers.
 
 **PART B — STRATEGIST'S NOTES** (concise)
+
+Begin PART B with this exact JSON block and nothing before it:
+```ats
+{"before":{"score":<0-100>,"matched":[...],"missing":[...]},"after":{"score":<0-100>,"matched":[...],"missing":[...]}}
+```
+"before" = ATS score of the original resume against this JD.
+"after" = ATS score of your rewritten resume against this JD.
+matched = JD keywords present in that resume. missing = JD keywords absent.
+Output the JSON on a single line with no extra text before or after the code fence.
+
+Then continue with:
 - Top 3 strategic moves and the JD signal behind each
 - What was fabricated in Align/Boviet and why it fits
 - Bolded phrases and reason for each

@@ -55,17 +55,29 @@ function downloadPdf(text: string) {
   doc.save("resume.pdf");
 }
 
-// Splits the model output into the resume body and the strategist's notes.
-// The ResumeSkill.md instructs the model to output PART A then PART B.
-function splitOutput(raw: string): { resume: string; notes: string } {
+// Splits the model output into resume body, strategist's notes, and embedded ATS scores.
+// ResumeSkill.md instructs the model to open PART B with a ```ats ... ``` JSON block.
+function splitOutput(raw: string): { resume: string; notes: string; ats: ATSResult | null } {
   const divider = raw.search(/strategist'?s?\s+(?:brief|notes?)/i);
-  if (divider === -1) return { resume: raw.trim(), notes: "" };
+  if (divider === -1) return { resume: raw.trim(), notes: "", ats: null };
+
   const resume = raw
     .slice(0, divider)
     .replace(/^PART\s+A[\s\S]{0,60}?\n/im, "")
     .trim();
-  const notes = raw.slice(divider).trim();
-  return { resume, notes };
+
+  let notesRaw = raw.slice(divider).trim();
+  let ats: ATSResult | null = null;
+
+  const atsFence = notesRaw.match(/```ats\s*([\s\S]*?)```/);
+  if (atsFence) {
+    try {
+      ats = JSON.parse(atsFence[1].trim()) as ATSResult;
+    } catch { /* leave ats null */ }
+    notesRaw = notesRaw.replace(/```ats[\s\S]*?```/, "").trim();
+  }
+
+  return { resume, notes: notesRaw, ats };
 }
 
 function renderBold(text: string) {
@@ -182,12 +194,8 @@ export default function Optimizer() {
     setAts(null);
     setVerbs(null);
 
-    const atsSys =
-      "Score the resume against the JD from 0–100 for ATS compatibility. " +
-      "Return ONLY valid JSON: {score: number, matched: string[], missing: string[]}";
-
     try {
-      // Step 1: rewrite + verbs in parallel (verbs only need the JD)
+      // Single parallel dispatch: rewrite (with embedded ATS in PART B) + verbs
       const [rawOutput, verbsRaw] = await Promise.all([
         callLLM(
           `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`,
@@ -201,25 +209,13 @@ export default function Optimizer() {
         ),
       ]);
 
-      const { resume: resumeText, notes } = splitOutput(rawOutput);
+      const { resume: resumeText, notes, ats: embeddedAts } = splitOutput(rawOutput);
       setOptimizedResume(resumeText);
       setStrategistNotes(notes);
+      setAts(embeddedAts);
 
       try { setVerbs(extractJson(verbsRaw) as string[]); }
       catch { setVerbs([]); }
-
-      // Step 2: score original vs optimized in parallel
-      const [beforeRaw, afterRaw] = await Promise.all([
-        callLLM(`JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`, atsSys, 512),
-        callLLM(`JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resumeText}`, atsSys, 512),
-      ]);
-
-      const fallback: SingleATS = { score: 0, matched: [], missing: ["Could not parse ATS response"] };
-      let before: SingleATS = fallback;
-      let after: SingleATS = fallback;
-      try { before = extractJson(beforeRaw) as SingleATS; } catch { /* use fallback */ }
-      try { after  = extractJson(afterRaw)  as SingleATS; } catch { /* use fallback */ }
-      setAts({ before, after });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
@@ -435,24 +431,55 @@ export default function Optimizer() {
                 <ATSSkeleton />
               ) : ats !== null ? (
                 <div className="space-y-4">
-                  {/* Before / After scores */}
-                  <div className="flex items-end gap-4">
+
+                  {/* Score numbers */}
+                  <div className="flex items-end justify-between">
                     <div className="space-y-0.5">
                       <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Before</p>
                       <div className="flex items-end gap-1">
-                        <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(ats.before.score)}`}>{ats.before.score}</span>
-                        <span className="text-white/30 text-sm mb-0.5">/ 100</span>
+                        <span className="text-4xl font-bold tabular-nums leading-none text-white/40">{ats.before.score}</span>
+                        <span className="text-white/20 text-sm mb-0.5">/ 100</span>
                       </div>
                     </div>
-                    <span className="text-white/20 text-2xl mb-1">→</span>
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 text-right">
                       <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">After</p>
-                      <div className="flex items-end gap-1">
+                      <div className="flex items-end justify-end gap-1">
                         <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(ats.after.score)}`}>{ats.after.score}</span>
-                        <span className="text-white/30 text-sm mb-0.5">/ 100</span>
+                        <span className="text-white/20 text-sm mb-0.5">/ 100</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Progress bars */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-full rounded-full bg-white/30 transition-all" style={{ width: `${ats.before.score}%` }} />
+                    </div>
+                    <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          ats.after.score >= 80 ? "bg-emerald-400" : ats.after.score >= 60 ? "bg-amber-400" : "bg-red-400"
+                        }`}
+                        style={{ width: `${ats.after.score}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Delta badge */}
+                  {ats.after.score > ats.before.score ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
+                      +{ats.after.score - ats.before.score} improvement
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/30 text-xs font-medium">
+                      No change
+                    </span>
+                  )}
+
+                  {/* Matched keywords */}
                   {ats.after.matched.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Matched</p>
@@ -463,6 +490,8 @@ export default function Optimizer() {
                       </div>
                     </div>
                   )}
+
+                  {/* Still missing keywords */}
                   {ats.after.missing.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Still Missing</p>
@@ -473,6 +502,7 @@ export default function Optimizer() {
                       </div>
                     </div>
                   )}
+
                 </div>
               ) : null}
             </div>
