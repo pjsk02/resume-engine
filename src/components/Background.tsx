@@ -10,9 +10,10 @@ export default function Background() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tubesRef = useRef<any>(null);
 
+  const ANIMATION_ENABLED = false;
   useEffect(() => {
+    if (!ANIMATION_ENABLED || !canvasRef.current) return;
     let mounted = true;
-    if (!canvasRef.current) return;
 
     (async () => {
       try {
